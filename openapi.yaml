@@ -1,0 +1,435 @@
+openapi: 3.0.3
+info:
+  title: KubeView API
+  description: |
+    The backend API for KubeView, a Kubernetes cluster visualizer.
+    It provides endpoints to fetch Kubernetes resources and receive real-time updates via Server-Sent Events (SSE).
+
+    **Server-Sent Events (SSE):**
+    The `/updates` endpoint provides a stream of real-time events from the Kubernetes cluster.
+    - **URL:** `/updates?clientID={id}`
+    - **Method:** `GET`
+    - **Content-Type:** `text/event-stream`
+    - **Events:**
+      - `add`: A new Kubernetes resource was created. The event data is the JSON representation of the resource.
+      - `update`: A resource was updated. The event data is the JSON representation of the resource.
+      - `delete`: A resource was deleted. The event data is the JSON representation of the resource.
+      - `ping`: A heartbeat message to keep the connection alive.
+  version: 2.1.1
+servers:
+  - url: http://z420.coosane.org:8000
+    description: Live KubeView API Server
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: A simple health check endpoint that returns a 200 OK response.
+      operationId: getHealth
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: The service is healthy.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "OK"
+  /api/status:
+    get:
+      summary: Application Status
+      description: Provides the status of the KubeView application, including version and build info.
+      operationId: getStatus
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: A successful response containing the application status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+  /api/namespaces:
+    get:
+      summary: List Namespaces
+      description: >-
+        Retrieves a list of all Kubernetes namespaces the server can access.
+        It also returns metadata about the cluster and the KubeView server itself.
+      operationId: listNamespaces
+      tags:
+        - Kubernetes
+      responses:
+        '200':
+          description: A successful response containing the list of namespaces and cluster metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NamespaceListResult'
+              example:
+                namespaces:
+                  - default
+                  - kube-system
+                  - online-boutique
+                clusterHost: "https://10.96.0.1:443"
+                version: "2.1.1"
+                buildInfo: "stable 89f388f 2025-07-14"
+                mode: "in-cluster"
+                podLogsEnabled: true
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /api/fetch/{namespace}:
+    get:
+      summary: Fetch Namespace Resources
+      description: Fetches all tracked Kubernetes resources within a specific namespace.
+      operationId: fetchNamespaceResources
+      tags:
+        - Kubernetes
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: The name of the Kubernetes namespace.
+          schema:
+            type: string
+        - name: clientID
+          in: query
+          required: true
+          description: A unique client identifier required for routing SSE events.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A map of Kubernetes resources, keyed by resource type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NamespaceResources'
+        '400':
+          description: Bad Request, likely a missing `clientID`.
+        '403':
+          description: Forbidden, when requesting a namespace not permitted in single-namespace mode.
+        '404':
+          description: The requested namespace was not found.
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /api/logs/{namespace}/{podname}:
+    get:
+      summary: Get Pod Logs
+      description: Retrieves the most recent log lines for a specific pod.
+      operationId: getPodLogs
+      tags:
+        - Kubernetes
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: The namespace of the pod.
+          schema:
+            type: string
+        - name: podname
+          in: path
+          required: true
+          description: The name of the pod.
+          schema:
+            type: string
+        - name: max
+          in: query
+          required: false
+          description: The maximum number of log lines to return.
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: The raw text logs from the pod.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Log line 1...\nLog line 2...\n"
+        '400':
+          description: Bad Request, if `max` is not a valid number.
+
+  /updates:
+    get:
+      summary: Stream Kubernetes Updates
+      description: |
+        Establishes a Server-Sent Events (SSE) connection to stream real-time updates from the Kubernetes cluster.
+        Clients must provide a unique `clientID` to identify themselves.
+
+        Events sent over this stream include:
+        - `add`: A new resource was created.
+        - `update`: An existing resource was updated.
+        - `delete`: A resource was deleted.
+        - `ping`: A heartbeat to keep the connection alive.
+
+        The `data` field of each event will contain the JSON representation of the Kubernetes resource.
+      operationId: streamUpdates
+      tags:
+        - Kubernetes
+      parameters:
+        - name: clientID
+          in: query
+          required: true
+          description: A unique client identifier for the SSE session.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A successful SSE connection is established. The response body will be a stream of events.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  event: add
+                  data: {"apiVersion":"v1","kind":"Pod",...}
+
+                  event: update
+                  data: {"apiVersion":"v1","kind":"Pod",...}
+
+                  event: ping
+                  data: ""
+        '400':
+          description: Bad Request, the `clientID` query parameter is missing.
+
+components:
+  schemas:
+    NamespaceListResult:
+      type: object
+      properties:
+        namespaces:
+          type: array
+          items:
+            type: string
+          description: List of namespace names.
+        clusterHost:
+          type: string
+          description: The hostname of the Kubernetes API server.
+        version:
+          type: string
+          description: The version of the KubeView application.
+        buildInfo:
+          type: string
+          description: Build information for the KubeView binary.
+        mode:
+          type: string
+          enum: [in-cluster, out-of-cluster]
+          description: How KubeView is connected to the Kubernetes cluster.
+        podLogsEnabled:
+          type: boolean
+          description: Whether the pod logs endpoint is enabled.
+
+    NamespaceResources:
+      type: object
+      description: A map where keys are Kubernetes resource types (e.g., 'pods', 'services') and values are arrays of those resource objects.
+      additionalProperties:
+        type: array
+        items:
+          $ref: '#/components/schemas/KubernetesResource'
+
+    KubernetesResource:
+      oneOf:
+        - $ref: '#/components/schemas/ConfigMap'
+        - $ref: '#/components/schemas/Deployment'
+        - $ref: '#/components/schemas/EndpointSlice'
+        - $ref: '#/components/schemas/Event'
+        - $ref: '#/components/schemas/Pod'
+        - $ref: '#/components/schemas/ReplicaSet'
+        - $ref: '#/components/schemas/Service'
+
+    ConfigMap:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        data:
+          type: object
+          additionalProperties:
+            type: string
+
+    Deployment:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        spec:
+          type: object
+        status:
+          type: object
+
+    EndpointSlice:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        addressType:
+          type: string
+        endpoints:
+          type: array
+          items:
+            type: object
+        ports:
+          type: array
+          items:
+            type: object
+
+    Event:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        involvedObject:
+          type: object
+        reason:
+          type: string
+        message:
+          type: string
+        source:
+          type: object
+        firstTimestamp:
+          type: string
+          format: date-time
+        lastTimestamp:
+          type: string
+          format: date-time
+        count:
+          type: integer
+        type:
+          type: string
+        eventTime:
+          type: string
+          format: date-time
+        reportingComponent:
+          type: string
+        reportingInstance:
+          type: string
+
+    Pod:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        spec:
+          type: object
+        status:
+          type: object
+
+    ReplicaSet:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        spec:
+          type: object
+        status:
+          type: object
+
+    Service:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/ObjectMeta'
+        spec:
+          type: object
+        status:
+          type: object
+
+    ObjectMeta:
+      type: object
+      properties:
+        name:
+          type: string
+        namespace:
+          type: string
+        uid:
+          type: string
+        resourceVersion:
+          type: string
+        creationTimestamp:
+          type: string
+          format: date-time
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+        ownerReferences:
+          type: array
+          items:
+            type: object
+        finalizers:
+          type: array
+          items:
+            type: string
+        managedFields:
+          type: array
+          items:
+            type: object
+
+    ProblemDetail:
+      type: object
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+        status:
+          type: integer
+        instance:
+          type: string
+        type:
+          type: string
+    Status:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "OK"
+        version:
+          type: string
+        buildInfo:
+          type: string
+        appName:
+          type: string
