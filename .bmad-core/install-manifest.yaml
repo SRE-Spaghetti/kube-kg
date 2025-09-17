@@ -1,9 +1,8 @@
 version: 4.43.1
-installed_at: '2025-09-12T08:18:17.189Z'
+installed_at: '2025-09-14T10:06:07.979Z'
 install_type: full
 agent: null
 ides_setup:
-  - claude-code
   - gemini
 expansion_packs: []
 files:
