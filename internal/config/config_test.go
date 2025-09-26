@@ -7,12 +7,24 @@ import (
 
 func TestLoadConfig(t *testing.T) {
 	// Arrange
-	os.Setenv("KUBEVIEW_URL", "http://localhost:8080")
-	os.Setenv("NEO4J_URI", "neo4j://localhost:7687")
-	os.Setenv("NEO4J_USER", "neo4j")
-	os.Setenv("NEO4J_PASSWORD", "password")
-	os.Setenv("CLIENT_ID", "test-client")
-	os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "otel.example.com:4317")
+	if err := os.Setenv("KUBEVIEW_URL", "http://localhost:8080"); err != nil {
+		t.Fatalf("failed to set KUBEVIEW_URL: %v", err)
+	}
+	if err := os.Setenv("NEO4J_URI", "neo4j://localhost:7687"); err != nil {
+		t.Fatalf("failed to set NEO4J_URI: %v", err)
+	}
+	if err := os.Setenv("NEO4J_USER", "neo4j"); err != nil {
+		t.Fatalf("failed to set NEO4J_USER: %v", err)
+	}
+	if err := os.Setenv("NEO4J_PASSWORD", "password"); err != nil {
+		t.Fatalf("failed to set NEO4J_PASSWORD: %v", err)
+	}
+	if err := os.Setenv("CLIENT_ID", "test-client"); err != nil {
+		t.Fatalf("failed to set CLIENT_ID: %v", err)
+	}
+	if err := os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "otel.example.com:4317"); err != nil {
+		t.Fatalf("failed to set OTEL_EXPORTER_OTLP_ENDPOINT: %v", err)
+	}
 
 	// Act
 	cfg := LoadConfig()

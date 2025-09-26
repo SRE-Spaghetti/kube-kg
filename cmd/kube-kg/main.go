@@ -40,7 +40,11 @@ func main() {
 		logger.Error("failed to initialize Neo4j client", slog.Any("error", err))
 		os.Exit(1)
 	}
-	defer neo4jClient.Close(ctx)
+	defer func() {
+		if err := neo4jClient.Close(ctx); err != nil {
+			logger.Error("failed to close Neo4j client", slog.Any("error", err))
+		}
+	}()
 
 	logger.Info("Configuration loaded",
 		slog.String("KubeviewURL", cfg.KubeviewURL),
