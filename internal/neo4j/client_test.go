@@ -2,19 +2,18 @@ package neo4j
 
 import (
 	"context"
+	"kube-kg/internal/config"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/neo4j"
-
-	"kube-kg/internal/config"
 )
 
 func TestNewClient(t *testing.T) {
 	ctx := context.Background()
 
-	neo4jContainer, err := neo4j.Run(ctx, "neo4j:5")
+	neo4jContainer, err := neo4j.Run(ctx, "neo4j:5", neo4j.WithAdminPassword("password"))
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, neo4jContainer.Terminate(ctx))
@@ -26,7 +25,7 @@ func TestNewClient(t *testing.T) {
 	cfg := &config.Config{
 		Neo4jURI:      uri,
 		Neo4jUser:     "neo4j",
-		Neo4jPassword: "letmein",
+		Neo4jPassword: "password",
 	}
 
 	client, err := NewClient(ctx, cfg)
@@ -41,7 +40,7 @@ func TestNewClient(t *testing.T) {
 func TestClient_RunCypher(t *testing.T) {
 	ctx := context.Background()
 
-	neo4jContainer, err := neo4j.Run(ctx, "neo4j:5")
+	neo4jContainer, err := neo4j.Run(ctx, "neo4j:5", neo4j.WithAdminPassword("password"))
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, neo4jContainer.Terminate(ctx))
@@ -53,7 +52,7 @@ func TestClient_RunCypher(t *testing.T) {
 	cfg := &config.Config{
 		Neo4jURI:      uri,
 		Neo4jUser:     "neo4j",
-		Neo4jPassword: "letmein",
+		Neo4jPassword: "password",
 	}
 
 	client, err := NewClient(ctx, cfg)
@@ -62,8 +61,18 @@ func TestClient_RunCypher(t *testing.T) {
 		require.NoError(t, client.Close(ctx))
 	}()
 
-	result, err := client.RunCypher(ctx, "RETURN 1", nil)
+	tx, err := client.Begin(ctx)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, tx.Close(ctx)) }()
+
+	_, err = tx.Run(ctx, "CREATE (n:Test {name: 'test'})", nil)
 	require.NoError(t, err)
 
-	assert.NotNil(t, result)
+	result, err := tx.Run(ctx, "MATCH (n:Test) RETURN n.name", nil)
+	require.NoError(t, err)
+
+	assert.True(t, result.Next(ctx))
+	assert.Equal(t, "test", result.Record().Values[0])
+
+	require.NoError(t, tx.Commit(ctx))
 }
