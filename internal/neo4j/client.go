@@ -3,10 +3,10 @@ package neo4j
 import (
 	"context"
 	"fmt"
+	"kube-kg/internal/config"
+	"kube-kg/internal/graph"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-
-	"kube-kg/internal/config"
 )
 
 // Client wraps the Neo4j driver.
@@ -36,20 +36,47 @@ func (c *Client) Close(ctx context.Context) error {
 	return c.driver.Close(ctx)
 }
 
-// RunCypher executes a Cypher query against the database.
-func (c *Client) RunCypher(ctx context.Context, query string, params map[string]interface{}) (result neo4j.ResultWithContext, err error) {
+// Begin starts a new transaction.
+func (c *Client) Begin(ctx context.Context) (neo4j.ExplicitTransaction, error) {
 	session := c.driver.NewSession(ctx, neo4j.SessionConfig{})
-	defer func() {
-		if closeErr := session.Close(ctx); closeErr != nil && err == nil {
-			err = fmt.Errorf("failed to close session: %w", closeErr)
-		}
-	}()
-
-	result, err = session.Run(ctx, query, params)
+	tx, err := session.BeginTransaction(ctx)
 	if err != nil {
-		err = fmt.Errorf("failed to run Cypher query: %w", err)
-		return
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	return tx, nil
+}
+
+// MergeNode merges a node in the graph.
+func (c *Client) MergeNode(ctx context.Context, tx neo4j.ExplicitTransaction, node graph.Node) error {
+	query := `
+	MERGE (n:%s {uid: $uid})
+	SET n += $props
+	`
+	query = fmt.Sprintf(query, node.Label)
+
+	params := map[string]interface{}{
+		"uid":   node.ID,
+		"props": node.Properties,
 	}
 
-	return result, nil
+	_, err := tx.Run(ctx, query, params)
+	return err
+}
+
+// MergeRelationship merges a relationship in the graph.
+func (c *Client) MergeRelationship(ctx context.Context, tx neo4j.ExplicitTransaction, rel graph.Relationship) error {
+	query := `
+	MATCH (source {uid: $sourceId})
+	MATCH (target {uid: $targetId})
+	MERGE (source)-[:%s]->(target)
+	`
+	query = fmt.Sprintf(query, rel.Type)
+
+	params := map[string]interface{}{
+		"sourceId": rel.SourceID,
+		"targetId": rel.TargetID,
+	}
+
+	_, err := tx.Run(ctx, query, params)
+	return err
 }
