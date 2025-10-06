@@ -80,3 +80,19 @@ func (c *Client) MergeRelationship(ctx context.Context, tx neo4j.ExplicitTransac
 	_, err := tx.Run(ctx, query, params)
 	return err
 }
+
+// DeleteNode deletes a node from the graph.
+func (c *Client) DeleteNode(ctx context.Context, uid string) error {
+	query := `
+	MATCH (n {uid: $uid})
+	DETACH DELETE n
+	`
+
+	params := map[string]interface{}{
+		"uid": uid,
+	}
+
+	session := c.driver.NewSession(ctx, neo4j.SessionConfig{})
+	_, err := session.Run(ctx, query, params)
+	return err
+}
