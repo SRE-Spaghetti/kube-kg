@@ -31,6 +31,10 @@ func NewClient(ctx context.Context, cfg *config.Config) (*Client, error) {
 	return &Client{driver: driver}, nil
 }
 
+func (c *Client) VerifyConnectivity(ctx context.Context) error {
+	return c.driver.VerifyConnectivity(ctx)
+}
+
 // Close closes the Neo4j driver.
 func (c *Client) Close(ctx context.Context) error {
 	return c.driver.Close(ctx)
@@ -78,5 +82,21 @@ func (c *Client) MergeRelationship(ctx context.Context, tx neo4j.ExplicitTransac
 	}
 
 	_, err := tx.Run(ctx, query, params)
+	return err
+}
+
+// DeleteNode deletes a node from the graph.
+func (c *Client) DeleteNode(ctx context.Context, uid string) error {
+	query := `
+	MATCH (n {uid: $uid})
+	DETACH DELETE n
+	`
+
+	params := map[string]interface{}{
+		"uid": uid,
+	}
+
+	session := c.driver.NewSession(ctx, neo4j.SessionConfig{})
+	_, err := session.Run(ctx, query, params)
 	return err
 }

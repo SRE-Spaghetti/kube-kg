@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 )
 
@@ -20,12 +21,16 @@ func LoadConfig() *Config {
 	if otelEndpoint == "" {
 		otelEndpoint = "localhost:4317"
 	}
+	clientId := os.Getenv("CLIENT_ID")
+	if clientId == "" {
+		clientId = fmt.Sprintf("Client-%d", os.Getpid())
+	}
 	return &Config{
 		KubeviewURL:          os.Getenv("KUBEVIEW_URL"),
 		Neo4jURI:             os.Getenv("NEO4J_URI"),
 		Neo4jUser:            os.Getenv("NEO4J_USER"),
 		Neo4jPassword:        os.Getenv("NEO4J_PASSWORD"),
-		ClientID:             os.Getenv("CLIENT_ID"),
+		ClientID:             clientId,
 		OtelExporterEndpoint: otelEndpoint,
 	}
 }
