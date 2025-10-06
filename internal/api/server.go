@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 )
 
@@ -60,6 +62,7 @@ func (s *Server) handleHealth() http.HandlerFunc {
 		w.WriteHeader(status)
 		err := json.NewEncoder(w).Encode(response)
 		if err != nil {
+			slog.Error("failed to encode response", "err", err)
 			return
 		}
 	}
@@ -68,10 +71,10 @@ func (s *Server) handleHealth() http.HandlerFunc {
 func (s *Server) handleRefresh() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		go func() {
-			if err := s.processor.InitialSync(r.Context()); err != nil {
+			if err := s.processor.InitialSync(context.Background()); err != nil {
 				// Log the error, but don't block the response
-				// In a real application, you'd use a structured logger
-				println("error during initial sync:", err.Error())
+				slog.Error("error during refresh sync:", "err", err)
+				return
 			}
 		}()
 		w.WriteHeader(http.StatusAccepted)

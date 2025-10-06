@@ -32,11 +32,9 @@ type NamespaceResources map[string]json.RawMessage
 // Event represents an SSE event from the KubeView API.
 
 type Event struct {
-
-	Type   string             `json:"type"`
+	Type string `json:"type"`
 
 	Object KubernetesResource `json:"object"`
-
 }
 
 // KubernetesResource represents a generic Kubernetes resource.

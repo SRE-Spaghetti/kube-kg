@@ -65,21 +65,23 @@ func (p *Processor) InitialSync(ctx context.Context) error {
 		}()
 
 		for _, resource := range resources {
+			span.AddEvent(fmt.Sprintf("processing resource: %s", resource.Metadata.Name))
 			node := graph.KubernetesResourceToNode(resource)
-							if err := p.neo4jClient.MergeNode(ctx, tx, node); err != nil {
-								if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
-									slog.Error("failed to rollback transaction", "err", rollbackErr)
-								}
-								return fmt.Errorf("failed to merge node: %w", err)
-							}
+			if err := p.neo4jClient.MergeNode(ctx, tx, node); err != nil {
+				if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+					slog.Error("failed to rollback transaction", "err", rollbackErr)
+				}
+				return fmt.Errorf("failed to merge node: %w", err)
+			}
 			relationships := graph.ExtractRelationships(resource, resources)
 			for _, rel := range relationships {
-									if err := p.neo4jClient.MergeRelationship(ctx, tx, rel); err != nil {
-										if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
-											slog.Error("failed to rollback transaction", "err", rollbackErr)
-										}
-										return fmt.Errorf("failed to merge relationship: %w", err)
-									}			}
+				if err := p.neo4jClient.MergeRelationship(ctx, tx, rel); err != nil {
+					if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+						slog.Error("failed to rollback transaction", "err", rollbackErr)
+					}
+					return fmt.Errorf("failed to merge relationship: %w", err)
+				}
+			}
 		}
 
 		if err := tx.Commit(ctx); err != nil {
