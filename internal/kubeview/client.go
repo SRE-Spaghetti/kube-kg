@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/r3labs/sse/v2"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -25,7 +26,18 @@ type NamespaceListResult struct {
 }
 
 // NamespaceResources represents the response from the /api/fetch/{namespace} endpoint.
+
 type NamespaceResources map[string]json.RawMessage
+
+// Event represents an SSE event from the KubeView API.
+
+type Event struct {
+
+	Type   string             `json:"type"`
+
+	Object KubernetesResource `json:"object"`
+
+}
 
 // KubernetesResource represents a generic Kubernetes resource.
 type KubernetesResource struct {
@@ -131,4 +143,51 @@ func (c *Client) FetchNamespaceResources(ctx context.Context, namespace string, 
 	}
 
 	return result, nil
+}
+
+// StreamUpdates connects to the KubeView SSE stream and sends events to the provided channel.
+func (c *Client) StreamUpdates(ctx context.Context, clientID string, eventChan chan<- Event) {
+	go func() {
+		defer close(eventChan)
+		for {
+			select {
+			case <-ctx.Done():
+				slog.Info("stopping SSE client")
+				return
+			default:
+				err := c.connectAndStream(ctx, clientID, eventChan)
+				if err != nil {
+					slog.Error("sse connection error", "err", err)
+					// Implement backoff before retrying
+					time.Sleep(5 * time.Second)
+				}
+			}
+		}
+	}()
+}
+
+func (c *Client) connectAndStream(ctx context.Context, clientID string, eventChan chan<- Event) error {
+	url := fmt.Sprintf("%s/updates?clientID=%s", c.baseURL, clientID)
+	slog.Info("connecting to SSE stream", "url", url)
+
+	client := sse.NewClient(url)
+	client.Connection = c.httpClient
+
+	return client.SubscribeWithContext(ctx, "", func(msg *sse.Event) {
+		if len(msg.Data) == 0 {
+			return // Ignore empty messages
+		}
+
+		if string(msg.Event) == "ping" {
+			slog.Debug("received ping")
+			return
+		}
+
+		var event Event
+		if err := json.Unmarshal(msg.Data, &event); err != nil {
+			slog.Error("failed to unmarshal sse event", "err", err, "data", string(msg.Data))
+			return
+		}
+		eventChan <- event
+	})
 }
