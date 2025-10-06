@@ -68,8 +68,10 @@ func TestInitialSync(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { require.NoError(t, neo4jClient.Close(ctx)) }()
 
+	processor := NewProcessor(kubeClient, neo4jClient)
+
 	// Run initial sync
-	err = InitialSync(ctx, kubeClient, neo4jClient)
+	err = processor.InitialSync(ctx)
 	require.NoError(t, err)
 
 	// Verify data in Neo4j

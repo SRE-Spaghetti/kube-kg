@@ -13,19 +13,34 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+// Processor handles the synchronization of Kubernetes data to Neo4j.
+
+type Processor struct {
+	kubeClient  *kubeview.Client
+	neo4jClient *neo4j.Client
+}
+
+// NewProcessor creates a new Processor.
+func NewProcessor(kubeClient *kubeview.Client, neo4jClient *neo4j.Client) *Processor {
+	return &Processor{
+		kubeClient:  kubeClient,
+		neo4jClient: neo4jClient,
+	}
+}
+
 // InitialSync performs an initial synchronization of the Kubernetes cluster state to Neo4j.
-func InitialSync(ctx context.Context, kubeClient *kubeview.Client, neo4jClient *neo4j.Client) error {
+func (p *Processor) InitialSync(ctx context.Context) error {
 	ctx, span := otel.Tracer("kube-kg/internal/processor").Start(ctx, "InitialSync")
 	defer span.End()
 
-	namespaceResult, err := kubeClient.ListNamespaces(ctx)
+	namespaceResult, err := p.kubeClient.ListNamespaces(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list namespaces: %w", err)
 	}
 
 	for _, namespace := range namespaceResult.Namespaces {
 		span.AddEvent(fmt.Sprintf("processing namespace: %s", namespace))
-		rawResources, err := kubeClient.FetchNamespaceResources(ctx, namespace, "initial-sync")
+		rawResources, err := p.kubeClient.FetchNamespaceResources(ctx, namespace, "initial-sync")
 		if err != nil {
 			return fmt.Errorf("failed to fetch resources for namespace %s: %w", namespace, err)
 		}
@@ -39,7 +54,7 @@ func InitialSync(ctx context.Context, kubeClient *kubeview.Client, neo4jClient *
 			resources = append(resources, resourceSlice...)
 		}
 
-		tx, err := neo4jClient.Begin(ctx)
+		tx, err := p.neo4jClient.Begin(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to begin transaction: %w", err)
 		}
@@ -51,7 +66,7 @@ func InitialSync(ctx context.Context, kubeClient *kubeview.Client, neo4jClient *
 
 		for _, resource := range resources {
 			node := graph.KubernetesResourceToNode(resource)
-							if err := neo4jClient.MergeNode(ctx, tx, node); err != nil {
+							if err := p.neo4jClient.MergeNode(ctx, tx, node); err != nil {
 								if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
 									slog.Error("failed to rollback transaction", "err", rollbackErr)
 								}
@@ -59,7 +74,7 @@ func InitialSync(ctx context.Context, kubeClient *kubeview.Client, neo4jClient *
 							}
 			relationships := graph.ExtractRelationships(resource, resources)
 			for _, rel := range relationships {
-									if err := neo4jClient.MergeRelationship(ctx, tx, rel); err != nil {
+									if err := p.neo4jClient.MergeRelationship(ctx, tx, rel); err != nil {
 										if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
 											slog.Error("failed to rollback transaction", "err", rollbackErr)
 										}

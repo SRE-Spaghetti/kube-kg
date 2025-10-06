@@ -5,9 +5,15 @@ import (
 	"log/slog"
 	"os"
 
+	"log"
+	"net/http"
+
+	"kube-kg/internal/api"
 	"kube-kg/internal/config"
+	"kube-kg/internal/kubeview"
 	"kube-kg/internal/neo4j"
 	"kube-kg/internal/observability"
+	"kube-kg/internal/processor"
 )
 
 func main() {
@@ -46,6 +52,10 @@ func main() {
 		}
 	}()
 
+	kubeviewClient := kubeview.NewClient(cfg.KubeviewURL)
+
+	processor := processor.NewProcessor(kubeviewClient, neo4jClient)
+
 	logger.Info("Configuration loaded",
 		slog.String("KubeviewURL", cfg.KubeviewURL),
 		slog.String("Neo4jURI", cfg.Neo4jURI),
@@ -61,4 +71,11 @@ func main() {
 	span.End()
 
 	logger.Info("Application started")
+
+	// Start the HTTP server
+	server := api.NewServer(kubeviewClient, neo4jClient, processor)
+	logger.Info("Starting HTTP server on port 8080")
+	if err := http.ListenAndServe(":8080", server); err != nil {
+		log.Fatalf("could not start server: %v", err)
+	}
 }

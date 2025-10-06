@@ -31,6 +31,10 @@ func NewClient(ctx context.Context, cfg *config.Config) (*Client, error) {
 	return &Client{driver: driver}, nil
 }
 
+func (c *Client) VerifyConnectivity(ctx context.Context) error {
+	return c.driver.VerifyConnectivity(ctx)
+}
+
 // Close closes the Neo4j driver.
 func (c *Client) Close(ctx context.Context) error {
 	return c.driver.Close(ctx)
