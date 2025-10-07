@@ -1,6 +1,6 @@
 # Makefile for the kube-kg project
 
-.PHONY: all build run test clean lint security
+.PHONY: all build run test clean lint security docker-build kind-load
 
 # Default target: builds the application
 all: build
@@ -38,3 +38,15 @@ security:
 clean:
 	@echo "Cleaning up..."
 	rm -f kube-kg
+
+# Build the Docker image
+docker-build:
+	@echo "Building Docker image..."
+	docker build -t kube-kg:latest .
+	@trivy image -q --severity HIGH,CRITICAL kube-kg:latest
+	@echo Image OK: kube-kg:latest
+
+# Load the Docker image into kind
+kind-load: docker-build
+	@echo "Loading Docker image into kind..."
+	kind load docker-image kube-kg:latest

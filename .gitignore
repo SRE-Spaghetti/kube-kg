@@ -1,1 +1,3 @@
-kube-kg
+./kube-kg
+charts/kube-kg/charts
+charts/kube-kg/Chart.lock

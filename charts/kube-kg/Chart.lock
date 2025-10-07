@@ -1,0 +1,12 @@
+dependencies:
+- name: kubeview
+  repository: https://code.benco.io/kubeview/deploy/helm
+  version: 2.0.5
+- name: jaeger
+  repository: https://jaegertracing.github.io/helm-charts
+  version: 3.4.1
+- name: neo4j
+  repository: https://helm.neo4j.com/neo4j
+  version: 2025.9.0
+digest: sha256:4e0a2e14821fb28ca89b397296f20941f8bcf05d5632730096ec4f6d0876193b
+generated: "2025-10-07T14:02:00.970332692+01:00"
