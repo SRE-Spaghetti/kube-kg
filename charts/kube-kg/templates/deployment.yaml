@@ -18,6 +18,16 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: KUBEVIEW_URL
+              value: {{ include "kube-kg.fullname" . | printf "http://%s-kubeview:8000" | quote }}
+            - name: NEO4J_URI
+              value: {{ include "kube-kg.fullname" . | printf "neo4j://%s-neo4j:7687" | quote }}
+            - name: NEO4J_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.neo4j.neo4j.name | printf "%s-auth" | quote }}
+                  key: NEO4J_AUTH
           ports:
             - name: http
               containerPort: 8080

@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: kube-kg
+  repository: ghcr.io/sre-spaghetti/kube-kg
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
@@ -84,14 +84,29 @@ affinity: {}
 # Dependency configurations
 kubeview:
   enabled: true
+  loadBalancer:
+    enabled: false
 
 jaeger:
   enabled: false
+  allInOne:
+    enabled: true
 
 neo4j:
   enabled: true
   neo4j:
-    name: neo-for-kube-kg
+    name: neo4kube-kg
+  nameOverride: neo4j
   volumes:
     data:
       mode: defaultStorageClass
+  env:
+    NEO4J_PLUGINS: '["apoc"]'
+  config:
+    server.directories.plugins: "/var/lib/neo4j/labs"
+    dbms.security.procedures.unrestricted: "apoc.*"
+    server.config.strict_validation.enabled: "false"
+    dbms.security.procedures.allowlist: "apoc.*"
+  apoc_config:
+    apoc.trigger.enabled: "true"
+    apoc.import.file.enabled: "true"

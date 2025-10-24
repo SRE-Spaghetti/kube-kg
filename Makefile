@@ -40,7 +40,7 @@ clean:
 	rm -f kube-kg
 
 # Build the Docker image
-docker-build:
+docker-build: lint security
 	@echo "Building Docker image..."
 	docker build -t kube-kg:latest .
 	@trivy image -q --severity HIGH,CRITICAL kube-kg:latest

@@ -40,8 +40,7 @@ Open a terminal and execute the following command, replacing the placeholder val
 ```sh
 KUBEVIEW_URL="http://your-kubeview-host:8000" \
 NEO4J_URI="neo4j://your-neo4j-host:7687" \
-NEO4J_USER="neo4j" \
-NEO4J_PASSWORD="your-password" \
+NEO4J_AUTH="neo4j/password" \
 go run ./cmd/kube-kg
 ```
 
