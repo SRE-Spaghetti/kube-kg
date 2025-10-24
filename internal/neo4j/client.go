@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"kube-kg/internal/config"
 	"kube-kg/internal/graph"
+	"strings"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
@@ -16,10 +17,17 @@ type Client struct {
 
 // NewClient creates a new Neo4j client and connects to the database.
 func NewClient(ctx context.Context, cfg *config.Config) (*Client, error) {
-	driver, err := neo4j.NewDriverWithContext(
-		cfg.Neo4jURI,
-		neo4j.BasicAuth(cfg.Neo4jUser, cfg.Neo4jPassword, ""),
-	)
+	var authToken neo4j.AuthToken
+	if cfg.Neo4JAuth != "" {
+		authParts := strings.Split(cfg.Neo4JAuth, "/")
+		if len(authParts) != 2 {
+			return nil, fmt.Errorf("invalid NEO4J_AUTH format. Expected username/password")
+		}
+		authToken = neo4j.BasicAuth(authParts[0], authParts[1], cfg.Neo4JAuth)
+	}
+
+	driver, err := neo4j.NewDriverWithContext(cfg.Neo4jURI, authToken)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Neo4j driver: %w", err)
 	}

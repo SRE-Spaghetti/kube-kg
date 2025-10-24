@@ -59,9 +59,8 @@ func TestInitialSync(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := &config.Config{
-		Neo4jURI:      uri,
-		Neo4jUser:     "neo4j",
-		Neo4jPassword: "password",
+		Neo4jURI:  uri,
+		Neo4JAuth: "neo4j/password",
 	}
 
 	neo4jClient, err := neo4j.NewClient(ctx, cfg)
@@ -102,9 +101,8 @@ func TestEventProcessor(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := &config.Config{
-		Neo4jURI:      uri,
-		Neo4jUser:     "neo4j",
-		Neo4jPassword: "password",
+		Neo4jURI:  uri,
+		Neo4JAuth: "neo4j/password",
 	}
 
 	neo4jClient, err := neo4j.NewClient(ctx, cfg)

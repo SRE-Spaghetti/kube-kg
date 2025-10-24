@@ -23,9 +23,8 @@ func TestNewClient(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := &config.Config{
-		Neo4jURI:      uri,
-		Neo4jUser:     "neo4j",
-		Neo4jPassword: "password",
+		Neo4jURI:  uri,
+		Neo4JAuth: "neo4j/password",
 	}
 
 	client, err := NewClient(ctx, cfg)
@@ -50,9 +49,8 @@ func TestClient_RunCypher(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := &config.Config{
-		Neo4jURI:      uri,
-		Neo4jUser:     "neo4j",
-		Neo4jPassword: "password",
+		Neo4jURI:  uri,
+		Neo4JAuth: "neo4j/password",
 	}
 
 	client, err := NewClient(ctx, cfg)

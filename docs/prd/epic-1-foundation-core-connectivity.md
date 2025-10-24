@@ -13,7 +13,7 @@
 **Acceptance Criteria:**
 
 1.  A new Go module is initialized and a directory structure matching the project brief is created.
-2.  A `Config` struct is defined to hold all required configuration values (`KubeviewURL`, `Neo4jURI`, `Neo4jUser`, `Neo4jPassword`, `ClientID`).
+2.  A `Config` struct is defined to hold all required configuration values (`KubeviewURL`, `Neo4jURI`, `Neo4jAuth`, `ClientID`).
 3.  A function is implemented to load these configuration values from environment variables.
 4.  Unit tests exist to verify that configuration is loaded correctly from environment variables.
 5.  The application can be run and it will successfully load configuration without errors.

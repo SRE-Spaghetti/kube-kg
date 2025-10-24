@@ -1,0 +1,18 @@
+apiVersion: v2
+name: kube-kg
+description: A Helm chart for deploying the kube-kg service
+version: 0.1.0
+appVersion: "1.0"
+dependencies:
+  - name: kubeview
+    version: "2.0.5"
+    repository: "https://code.benco.io/kubeview/deploy/helm"
+    condition: kubeview.enabled
+  - name: jaeger
+    version: "3.4.1"
+    repository: "https://jaegertracing.github.io/helm-charts"
+    condition: jaeger.enabled
+  - name: neo4j
+    version: "2025.09.0"
+    repository: "https://helm.neo4j.com/neo4j"
+    condition: neo4j.enabled

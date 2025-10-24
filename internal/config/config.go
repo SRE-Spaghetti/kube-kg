@@ -9,8 +9,7 @@ import (
 type Config struct {
 	KubeviewURL          string
 	Neo4jURI             string
-	Neo4jUser            string
-	Neo4jPassword        string
+	Neo4JAuth            string // formatted as: user/password
 	ClientID             string
 	OtelExporterEndpoint string
 }
@@ -25,11 +24,13 @@ func LoadConfig() *Config {
 	if clientId == "" {
 		clientId = fmt.Sprintf("Client-%d", os.Getpid())
 	}
+
+	neo4jAuth := os.Getenv("NEO4J_AUTH")
+
 	return &Config{
 		KubeviewURL:          os.Getenv("KUBEVIEW_URL"),
 		Neo4jURI:             os.Getenv("NEO4J_URI"),
-		Neo4jUser:            os.Getenv("NEO4J_USER"),
-		Neo4jPassword:        os.Getenv("NEO4J_PASSWORD"),
+		Neo4JAuth:            neo4jAuth,
 		ClientID:             clientId,
 		OtelExporterEndpoint: otelEndpoint,
 	}
